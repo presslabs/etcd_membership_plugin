@@ -18,8 +18,6 @@
 import json
 import urlparse
 
-from ansible.module_utils.basic import *
-
 
 # from ansible.module_utils import basic
 # basic.MODULE_COMPLEX_ARGS = json.dumps(dict(
@@ -250,4 +248,5 @@ def main():
 
 
 if __name__ == '__main__':
+    from ansible.module_utils.basic import *
     main()
