@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 
-setup(name='pl_etcd',
+setup(name='etcd_membership',
       version='0.0.1',
       platforms='any',
       description='Ansible etcdctl plugin.',

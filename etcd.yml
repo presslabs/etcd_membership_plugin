@@ -38,7 +38,7 @@
     # this is the actual plugin usage
     - block:
         - name: manage cluster membership
-          pl_etcd:
+          etcd_membership:
             state="{{cluster.role}}"
             cluster_urls="{% for h in groups['all'] %}{% if hostvars[h].cluster.role=='present' %}http://{{hostvars[h].ansible_eth1.ipv4.address}}:4001,{%endif%}{% endfor %}"
             advertised_peer_urls="http://{{ansible_eth1.ipv4.address}}:7001"

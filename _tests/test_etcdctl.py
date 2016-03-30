@@ -6,7 +6,7 @@ from multiprocessing.pool import ThreadPool
 import pytest
 import docker
 
-from library import pl_etcd as etcd
+from library.etcd_membership import StateHandler
 
 
 class Fuzzy(unicode):
@@ -127,7 +127,7 @@ class StreamHandler(object):
 
 def test_absent_to_present(one_node_fixture):
     """Start a one node cluster then add second node"""
-    handler = etcd.StateHandler(
+    handler = StateHandler(
         name="new-node", state="present", cluster_urls=["http://127.0.0.1:4001"],
         advertised_peer_urls=["http://127.0.0.1:4002"])
     assert handler.cluster_state['names'] == ['node0']
@@ -138,7 +138,7 @@ def test_absent_to_present(one_node_fixture):
 def test_present_to_absent(three_node_fixture):
     """Start 3 node cluster then remove a node"""
     _, cluster = three_node_fixture
-    handler = etcd.StateHandler(
+    handler = StateHandler(
         name="node0", state="absent",
         cluster_urls=[daemon.advertised_client_url for daemon in cluster])
     changed, msg = handler.transition()
@@ -151,14 +151,14 @@ def test_remove_unstarted(two_node_fixture):
     """Start 2 node cluster, register then remove the third unstarted node"""
     _, cluster = two_node_fixture
     # register new-node
-    handler = etcd.StateHandler(
+    handler = StateHandler(
         name="new-node", state="present",
         cluster_urls=[daemon.advertised_client_url for daemon in cluster],
         advertised_peer_urls=['http://example.com:4001'])
     handler.transition()
     assert sorted(handler.cluster_state['names']) == sorted(['node0', 'node1', UNSTARTED])
     # unregister the node
-    handler = etcd.StateHandler(
+    handler = StateHandler(
         name="new-node", state="absent",
         cluster_urls=[daemon.advertised_client_url for daemon in cluster],
         advertised_peer_urls=['http://example.com:4001'])
@@ -172,11 +172,11 @@ def test_add_when_unstarted(three_node_fixture):
     """Tests you can't add a member when you have unstarted nodes in the cluster
     """
     _, cluster = three_node_fixture
-    etcd.StateHandler(
+    StateHandler(
         name="new-node", state="present",
         cluster_urls=[daemon.advertised_client_url for daemon in cluster],
         advertised_peer_urls=['http://example.com:4001']).transition()
-    handler = etcd.StateHandler(
+    handler = StateHandler(
         name="another-node", state="present",
         cluster_urls=[daemon.advertised_client_url for daemon in cluster],
         advertised_peer_urls=['http://example.com:4002'])
@@ -193,7 +193,7 @@ def test_remove_with_unhealthy(three_node_fixture):
     docker_client, cluster = three_node_fixture
     container = cluster[2].container
     docker_client.stop(container)
-    handler = etcd.StateHandler(
+    handler = StateHandler(
         name="node0", state="absent",
         cluster_urls=[daemon.advertised_client_url for daemon in cluster])
     changed, msg = handler.transition()
@@ -206,11 +206,11 @@ def test_remove_with_unstarted(two_node_fixture):
     unstarted nodes in the cluster
     """
     _, cluster = two_node_fixture
-    etcd.StateHandler(
+    StateHandler(
         name="new-node", state="present",
         cluster_urls=[daemon.advertised_client_url for daemon in cluster],
         advertised_peer_urls=['http://example.com:4001']).transition()
-    handler = etcd.StateHandler(
+    handler = StateHandler(
         name="node0", state="absent",
         cluster_urls=[daemon.advertised_client_url for daemon in cluster])
     changed, msg = handler.transition()
