@@ -1,0 +1,24 @@
+- hosts: all
+  sudo: yes
+  gather_facts: no
+
+  tasks:
+    - name: add docker apt key
+      apt_key: id=58118E89F3A912897C070ADBF76221572C52609D keyserver=hkp://p80.pool.sks-keyservers.net:80
+
+    - name: add docker apt source
+      apt_repository: repo='deb https://apt.dockerproject.org/repo ubuntu-wily main' state=present
+
+    # setup the docker daemon
+    - copy: src="files/etc-default-docker" dest="/etc/default/docker"
+    - file: path=/etc/systemd/system/docker.service.d/ state=directory
+    - copy: src="files/systemd-docker.conf" dest="/etc/systemd/system/docker.service.d/docker.conf"
+
+    - name: install docker, pip
+      apt: pkg="{{ item }}" state=installed update-cache=yes
+      with_items:
+        - docker-engine
+        - python-pip
+
+    - name: install docker-py
+      pip: name=docker-py

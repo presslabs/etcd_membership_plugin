@@ -1,0 +1,105 @@
+- hosts: all
+  vars:
+    private_ip: "{{ ansible_eth1.ipv4.address }}"
+    version: "v2.3.0-alpha.0"
+    version_checksum: "sha256:f20fbe4cd5fb46b251a6c424ebf1417cf3f36daab5353f85a81f276c48474153"
+
+  tasks:
+
+    - name: check existing etcdctl
+      stat: path=/opt/etcd-{{version}}-linux-amd64
+      register: local_etcd_install
+
+    - debug:
+        msg="/opt/etcd-{{version}}"
+
+    # install etcdctl on nodes for debugging
+    - block:
+        - name: download etcdctl
+          get_url:
+            url=https://github.com/coreos/etcd/releases/download/{{version}}/etcd-{{version}}-linux-amd64.tar.gz
+            checksum={{version_checksum}}
+            dest=/tmp/etcd-{{version}}.tar.gz
+
+        - name: unzip etcdctl
+          unarchive:
+            copy=no
+            src=/tmp/etcd-{{version}}.tar.gz
+            dest=/opt/
+          become: true
+
+        - file: path=/tmp/etcd-{{version}}.tar.gz state=absent
+      when: local_etcd_install.stat.exists == False
+
+    - file: path=/usr/local/sbin/etcdctl src=/opt/etcd-{{version}}-linux-amd64/etcdctl state=link
+      become: true
+
+
+    # this is the actual plugin usage
+    - block:
+        - name: manage cluster membership
+          pl_etcd:
+            state="{{cluster.role}}"
+            cluster_urls="{% for h in groups['all'] %}{% if hostvars[h].cluster.role=='present' %}http://{{hostvars[h].ansible_eth1.ipv4.address}}:4001,{%endif%}{% endfor %}"
+            advertised_peer_urls="http://{{ansible_eth1.ipv4.address}}:7001"
+            name="{{inventory_hostname}}"
+          register: new_member
+
+        - debug: var=new_member
+
+      # There's nothing to do for new clusters; just start the daemons.
+      # Membership management is only required for adding or removing members
+      # once a cluster has already started.
+      when: cluster.state == 'existing'
+
+
+    - name: create data volume
+      file: path=/volumes/etcd state=directory
+      become: true
+
+    - name: delete proxy data dir
+      file: path=/volumes/etcd/proxy state=absent
+      become: true
+      when: cluster.role == 'present'
+
+    - name: delete member data dir
+      file: path=/volumes/etcd/member state=absent
+      become: true
+      when: cluster.role in ('proxy', 'absent')
+
+    - debug:
+        msg: >
+          -name={{ inventory_hostname }}
+          {% if cluster.role == 'proxy' %}-proxy on{% else %}-proxy off{% endif %}
+          -advertise-client-urls http://{{private_ip}}:4001
+          -listen-client-urls http://0.0.0.0:4001
+          -initial-advertise-peer-urls http://{{private_ip}}:7001
+          -listen-peer-urls http://0.0.0.0:7001
+          -initial-cluster-token {{cluster.name}}
+          -initial-cluster {% for h in groups['all'] %}{% if hostvars[h].cluster.role=="present" %}{{h}}=http://{{hostvars[h].ansible_eth1.ipv4.address}}:7001,{%endif%}{% endfor %}
+          -initial-cluster-state {{cluster.state}}
+          -data-dir /data
+
+    - name: manage etcd container
+      become: true
+      docker:
+        name: etcd
+        image: quay.io/coreos/etcd:v2.3.0-alpha.0
+        state: "{% if cluster.role == 'absent' %}absent{%else%}reloaded{%endif%}"
+        ports:
+          - 4001:4001
+          - 7001:7001
+        volumes: /volumes/etcd:/data:rw
+        restart_policy: on-failure
+        restart_policy_retry: 5
+        command: >
+          -name={{ inventory_hostname }}
+          {% if cluster.role == 'proxy' %}-proxy on{% endif %}
+          -advertise-client-urls http://{{private_ip}}:4001
+          -listen-client-urls http://0.0.0.0:4001
+          -initial-advertise-peer-urls http://{{private_ip}}:7001
+          -listen-peer-urls http://0.0.0.0:7001
+          -initial-cluster-token {{cluster.name}}
+          -initial-cluster {% for h in groups['all'] %}{% if hostvars[h].cluster.role=="present" %}{{h}}=http://{{hostvars[h].ansible_eth1.ipv4.address}}:7001,{%endif%}{% endfor %}
+          -initial-cluster-state {{cluster.state}}
+          -data-dir /data
