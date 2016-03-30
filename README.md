@@ -5,7 +5,7 @@
 Simply copy `library/pl_etcd.py` to your project's `library` directory.
 
 ## License
-The plugin is licensed under the Apache 2.0 License.
+The plugin is licensed under the GPL 3.0 License.
 
 ## Example usage
 See etcd.yml for an example.
