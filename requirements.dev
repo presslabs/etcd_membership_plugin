@@ -1,3 +1,2 @@
-pytest==2.8.3
-docker-py==1.7.2
+-r requirements.test
 -e git+https://github.com/ansible/ansible@v2.0.0-0.7.rc2#egg=ansible

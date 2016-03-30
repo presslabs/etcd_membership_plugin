@@ -4,7 +4,7 @@ python:
 
 install:
   - "pip install -e ."
-  - "pip install -r ./requirements.dev"
+  - "pip install -r ./requirements.test"
 
 services:
   - docker
