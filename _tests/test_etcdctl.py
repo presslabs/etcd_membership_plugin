@@ -35,7 +35,7 @@ def start_containers(request, count=1):
     # print "starting", count
     docker_url = os.getenv('DOCKER_URL', 'unix://var/run/docker.sock')
     docker_image = os.getenv('DOCKER_IMAGE', 'quay.io/coreos/etcd:v2.3.0-alpha.0')
-    client = docker.Client(base_url=docker_url)
+    client = docker.Client(base_url=docker_url, version='auto')
 
     initial_urls = []
     for i in xrange(count):
