@@ -1,4 +1,5 @@
 # Ansible plugin for managing etcd cluster membership
+[![Build Status](https://travis-ci.org/PressLabs/etcd_membership_plugin.svg?branch=master)](https://travis-ci.org/PressLabs/etcd_membership_plugin)
 
 ## Installing
 Simply copy `library/pl_etcd.py` to your project's `library` directory.
